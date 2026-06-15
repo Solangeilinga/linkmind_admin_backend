@@ -2,29 +2,23 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import logger from "../utils/logger";
 
-
-// ── Rôles disponibles ─────────────────────────────────────────
-// super_admin : accès total (contenu, config, annonces, défis, pros)
-// admin       : utilisateurs + réservations + modération
-// moderator   : modération signalements uniquement
-// analyst     : lecture seule (rapports & stats)
-
 export type AdminRole = "super_admin" | "admin" | "moderator" | "analyst";
 
 export interface AdminRequest extends Request {
-  admin?: { id: string; email: string; role: AdminRole };
-  // Re-déclare explicitement les propriétés Express pour éviter les erreurs TypeScript
-  body:   any;
-  params: Record<string, string>;
-  query:  Record<string, string | string[] | undefined>;
+  admin?: { 
+    id: string; 
+    email: string; 
+    role: AdminRole;
+  };
 }
 
 export const ROLE_HIERARCHY: Record<AdminRole, number> = {
   super_admin: 4,
-  admin:       3,
-  moderator:   2,
-  analyst:     1,
+  admin: 3,
+  moderator: 2,
+  analyst: 1,
 };
+
 
 export const protect = (
   req: AdminRequest,
