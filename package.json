@@ -2,11 +2,11 @@
   "name": "linkmind-admin-backend",
   "version": "1.0.0",
   "description": "LinkMind Admin - Backend Express API",
-  "main": "dist/src/index.js",
+  "main": "dist/index.js",
   "scripts": {
     "dev": "cross-env NODE_ENV=development nodemon --exec ts-node src/index.ts",
     "build": "tsc",
-    "start": "cross-env NODE_ENV=production node dist/src/index.js",
+    "start": "cross-env NODE_ENV=production node dist/index.js",
     "lint": "eslint src --ext .ts",
     "seed": "npx ts-node src/seed.ts"
   },
