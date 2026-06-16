@@ -28,12 +28,21 @@ app.use(helmet());
 app.set("trust proxy", 1);
 
 // ── CORS ─────────────────────────────────────────────────────
-const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || "http://localhost:3001").split(",");
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3001";
+
 app.use(
   cors({
     origin: (origin, cb) => {
-      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-      cb(new Error("CORS: origin not allowed"));
+      // Permettre les requêtes sans origine (Postman, curl, etc.)
+      if (!origin) return cb(null, true);
+      
+      // Autoriser uniquement l'URL du frontend configurée
+      if (origin === FRONTEND_URL || origin === FRONTEND_URL.replace(/\/$/, "")) {
+        return cb(null, true);
+      }
+      
+      console.log(`❌ CORS blocked: ${origin} (expected: ${FRONTEND_URL})`);
+      cb(new Error(`CORS: origin ${origin} not allowed`));
     },
     credentials: true,
   })
