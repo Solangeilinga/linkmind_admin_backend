@@ -2,6 +2,7 @@ import { Router, Response } from "express";
 import { param, query, body, validationResult } from "express-validator";
 import { protect, requireRole, AdminRequest } from "../middleware/auth.middleware";
 import { User } from "../models";
+import bcrypt from "bcryptjs";
 import logger from "../utils/logger";
 
 const router = Router();
@@ -130,6 +131,61 @@ router.delete(
       logger.warn(`User anonymized: ${req.params.id} by ${req.admin?.email}`);
       res.json({ success: true });
     } catch {
+      res.status(500).json({ error: "Erreur serveur" });
+    }
+  }
+);
+
+// POST /api/users — Créer un utilisateur manuellement
+router.post(
+  "/",
+  requireRole("admin"),
+  [
+    body("email").isEmail().normalizeEmail().withMessage("Email valide requis"),
+    body("password").isLength({ min: 6 }).withMessage("Mot de passe min 6 caractères"),
+    body("anonymousAlias").optional().trim(),
+    body("age").optional().isInt({ min: 13, max: 120 }),
+    body("city").optional().trim(),
+    body("country").optional().trim(),
+    body("gender").optional().isIn(["homme", "femme", "non_specifie"]),
+    body("role").optional().isIn(["user", "moderator"]),
+  ],
+  async (req: AdminRequest, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    try {
+      const { email, password, anonymousAlias, age, city, country, gender, role } = req.body;
+
+      // Vérifier doublon email
+      const existing = await User.findOne({ email: email.toLowerCase() });
+      if (existing) return res.status(409).json({ error: "Cet email est déjà utilisé." });
+
+      const hashedPassword = await bcrypt.hash(password, 12);
+
+      const user = await User.create({
+        email: email.toLowerCase(),
+        password: hashedPassword,
+        anonymousAlias: anonymousAlias || null,
+        age:     age     || null,
+        city:    city    || null,
+        country: country || null,
+        gender:  gender  || null,
+        isEmailVerified: true,   // Créé par admin = vérifié
+        isActive: true,
+        legalAccepted: true,
+        legalAcceptedAt: new Date(),
+      });
+
+      logger.info(\`[ADMIN] User created: \${user.email} by \${req.admin?.email}\`);
+      res.status(201).json({
+        _id: user._id,
+        email: user.email,
+        anonymousAlias: user.anonymousAlias,
+        createdAt: user.createdAt,
+      });
+    } catch (e: any) {
+      logger.error("User create error: " + e.message);
       res.status(500).json({ error: "Erreur serveur" });
     }
   }
