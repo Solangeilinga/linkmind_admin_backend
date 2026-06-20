@@ -177,7 +177,7 @@ router.post(
         legalAcceptedAt: new Date(),
       });
 
-      logger.info(\`[ADMIN] User created: \${user.email} by \${req.admin?.email}\`);
+      logger.info(`[ADMIN] User created: ${user.email} by ${req.admin?.email}`);
       res.status(201).json({
         _id: user._id,
         email: user.email,
