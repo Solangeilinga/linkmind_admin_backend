@@ -20,6 +20,7 @@ export interface IUser extends Document {
   isActive: boolean;
   isBanned: boolean;
   banReason?: string;
+  deletedAt?: Date | null;
   accountStatus?: "active" | "locked" | "suspended";
 
   // Gamification
