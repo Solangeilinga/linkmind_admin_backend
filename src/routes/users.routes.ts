@@ -34,13 +34,14 @@ router.get(
       }
       // Toujours exclure les comptes supprimés sauf si filtre explicite
       if (filter === "deleted") {
+        q.isActive = false;
         q.deletedAt = { $exists: true, $ne: null };
+      } else if (filter === "active") {
+        q.isActive = true;
+        q.deletedAt = { $exists: false };
       } else {
-        // active, all, new → exclure les supprimés
-        q.$and = [...(q.$and || []), {
-          $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }]
-        }];
-        if (filter === "active") q.isActive = true;
+        // "all" et "new" : exclure les supprimés (isActive=false ET deletedAt défini)
+        q.isActive = { $ne: false };
       }
       if (filter === "new") {
         const d = new Date();
