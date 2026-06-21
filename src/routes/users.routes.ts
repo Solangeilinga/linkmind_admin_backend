@@ -32,8 +32,9 @@ router.get(
           { email: { $regex: search, $options: "i" } },
         ];
       }
-      if (filter === "active") q.isActive = true;
-      if (filter === "deleted") q.deletedAt = { $ne: null };
+      if (filter === "active")  { q.isActive = true; q.deletedAt = null; }
+      else if (filter === "deleted") q.deletedAt = { $ne: null };
+      else { q.deletedAt = null; } // "all" et "new" excluent les supprimés par défaut
       if (filter === "new") {
         const d = new Date();
         d.setDate(d.getDate() - 7);
