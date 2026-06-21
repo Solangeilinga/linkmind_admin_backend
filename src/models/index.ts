@@ -10,7 +10,6 @@ export interface IUser extends Document {
   password?: string;
   avatar?: string;
   anonymousAlias?: string;
-  phone?: string;
   age?: number;
   city?: string;
   gender?: string;
@@ -70,7 +69,6 @@ const UserSchema = new Schema<IUser>(
     password:       { type: String, select: false },
     avatar:         { type: String },
     anonymousAlias: { type: String },
-    phone:          { type: String },
     age:            { type: Number },
     city:           { type: String },
     gender:         { type: String },

@@ -17,6 +17,7 @@ import challengesRoutes    from "./routes/challenges.routes";
 import professionalsRoutes from "./routes/professionals.routes";
 import adsRoutes           from "./routes/ads.routes";
 import configRoutes        from "./routes/config.routes";
+import seedRoutes          from "./routes/seed.routes";
 import { errorHandler } from "./middleware/error.middleware";
 import logger from "./utils/logger";
 
@@ -68,6 +69,7 @@ app.use("/api/challenges",    challengesRoutes);
 app.use("/api/professionals", professionalsRoutes);
 app.use("/api/ads",           adsRoutes);
 app.use("/api/config",        configRoutes);
+app.use("/api/seed",          seedRoutes);
 
 // ── 404 ──────────────────────────────────────────────────────
 app.use((_req, res) => res.status(404).json({ error: "Route not found" }));
