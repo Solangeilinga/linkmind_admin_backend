@@ -16,7 +16,7 @@ router.get(
     query("page").optional().isInt({ min: 1 }).toInt(),
     query("limit").optional().isInt({ min: 1, max: 100 }).toInt(),
     query("search").optional().trim().escape(),
-    query("filter").optional().isIn(["all", "active", "banned", "new"]),
+    query("filter").optional().isIn(["all", "active", "deleted", "new"]),
   ],
   async (req: AdminRequest, res: Response) => {
     try {
@@ -33,7 +33,7 @@ router.get(
         ];
       }
       if (filter === "active") q.isActive = true;
-      if (filter === "banned") q.isBanned = true;
+      if (filter === "deleted") q.deletedAt = { $ne: null };
       if (filter === "new") {
         const d = new Date();
         d.setDate(d.getDate() - 7);
@@ -74,19 +74,21 @@ router.get(
   }
 );
 
-// POST /api/users/:id/ban
+// POST /api/users/:id/soft-delete — suppression douce (3 étapes côté frontend)
 router.post(
-  "/:id/ban",
-  requireRole("moderator"),
+  "/:id/soft-delete",
+  requireRole("admin"),
   [param("id").isMongoId(), body("reason").notEmpty().trim()],
   async (req: AdminRequest, res: Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
     try {
       await User.findByIdAndUpdate(req.params.id, {
-        isBanned: true, isActive: false, banReason: req.body.reason,
+        isActive: false,
+        deletedAt: new Date(),
+        banReason: req.body.reason,
       });
-      logger.warn(`User banned: ${req.params.id} by ${req.admin?.email}`);
+      logger.warn(`[ADMIN] User soft-deleted: ${req.params.id} by ${req.admin?.email} — reason: ${req.body.reason}`);
       res.json({ success: true });
     } catch {
       res.status(500).json({ error: "Erreur serveur" });
@@ -94,17 +96,17 @@ router.post(
   }
 );
 
-// POST /api/users/:id/unban
+// POST /api/users/:id/restore — restaurer un compte supprimé
 router.post(
-  "/:id/unban",
-  requireRole("moderator"),
+  "/:id/restore",
+  requireRole("admin"),
   param("id").isMongoId(),
   async (req: AdminRequest, res: Response) => {
     try {
       await User.findByIdAndUpdate(req.params.id, {
-        isBanned: false, isActive: true, banReason: undefined,
+        isActive: true, deletedAt: null, banReason: undefined,
       });
-      logger.info(`User unbanned: ${req.params.id} by ${req.admin?.email}`);
+      logger.info(`[ADMIN] User restored: ${req.params.id} by ${req.admin?.email}`);
       res.json({ success: true });
     } catch {
       res.status(500).json({ error: "Erreur serveur" });
