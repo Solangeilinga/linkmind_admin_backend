@@ -32,9 +32,16 @@ router.get(
           { email: { $regex: search, $options: "i" } },
         ];
       }
-      if (filter === "active")  { q.isActive = true; q.deletedAt = null; }
-      else if (filter === "deleted") q.deletedAt = { $ne: null };
-      else { q.deletedAt = null; } // "all" et "new" excluent les supprimés par défaut
+      // Toujours exclure les comptes supprimés sauf si filtre explicite
+      if (filter === "deleted") {
+        q.deletedAt = { $exists: true, $ne: null };
+      } else {
+        // active, all, new → exclure les supprimés
+        q.$and = [...(q.$and || []), {
+          $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }]
+        }];
+        if (filter === "active") q.isActive = true;
+      }
       if (filter === "new") {
         const d = new Date();
         d.setDate(d.getDate() - 7);
