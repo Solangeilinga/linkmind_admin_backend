@@ -78,9 +78,10 @@ router.put("/:id/slots", requireRole("admin"), param("id").isMongoId(),
       if (!pro) return res.status(404).json({ error: "Professionnel introuvable" });
       logger.info(`Slots updated for professional ${req.params.id} by ${req.admin?.email}`);
       res.json({ professional: pro });
-    } catch (err) {
-      logger.error("Slots update: " + err);
-      res.status(500).json({ error: "Erreur serveur" });
+    } catch (err: any) {
+      logger.error("Slots update error: " + (err?.message || err));
+      logger.error("Slots update stack: " + err?.stack?.split('\n')[1]);
+      res.status(500).json({ error: "Erreur serveur", detail: err?.message });
     }
   }
 );

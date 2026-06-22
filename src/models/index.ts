@@ -135,6 +135,7 @@ const SlotSchema = new Schema(
     isBooked:  { type: Boolean, default: false },
     bookingId: { type: Schema.Types.ObjectId, ref: "Booking", default: null },
   }
+  // Note: { _id: false } retiré — il empêchait la sauvegarde du _id String personnalisé
 );
 
 // Sous-schéma disponibilités récurrentes
