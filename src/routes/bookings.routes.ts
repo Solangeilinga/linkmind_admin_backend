@@ -140,6 +140,18 @@ router.post(
         cancelledAt: new Date(),
         adminNote:   req.body.reason,
       });
+
+      // Libérer le créneau si le booking avait un slotId
+      if (booking.slotId) {
+        await Professional.findByIdAndUpdate(booking.professional, {
+          $set: {
+            "availableSlots.$[el].isBooked":   false,
+            "availableSlots.$[el].bookingId":  null,
+          },
+        }, { arrayFilters: [{ "el._id": booking.slotId }] });
+        logger.info(`Slot ${booking.slotId} freed after admin cancel`);
+      }
+
       logger.warn(`Booking cancelled: ${req.params.id} by ${req.admin?.email}`);
       res.json({ success: true });
     } catch {
