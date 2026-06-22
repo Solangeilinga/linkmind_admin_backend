@@ -10,6 +10,7 @@ export interface IUser extends Document {
   password?: string;
   avatar?: string;
   anonymousAlias?: string;
+  phone?: string;
   age?: number;
   city?: string;
   gender?: string;
@@ -20,7 +21,6 @@ export interface IUser extends Document {
   isActive: boolean;
   isBanned: boolean;
   banReason?: string;
-  deletedAt?: Date | null;
   accountStatus?: "active" | "locked" | "suspended";
 
   // Gamification
@@ -70,6 +70,7 @@ const UserSchema = new Schema<IUser>(
     password:       { type: String, select: false },
     avatar:         { type: String },
     anonymousAlias: { type: String },
+    phone:          { type: String },
     age:            { type: Number },
     city:           { type: String },
     gender:         { type: String },
@@ -133,8 +134,7 @@ const SlotSchema = new Schema(
     endTime:   { type: String, required: true },
     isBooked:  { type: Boolean, default: false },
     bookingId: { type: Schema.Types.ObjectId, ref: "Booking", default: null },
-  },
-  { _id: false }
+  }
 );
 
 // Sous-schéma disponibilités récurrentes
