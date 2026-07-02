@@ -1,14 +1,17 @@
 {
-  "name": "linkmind-admin-backend",
+  "name": "sawaara-admin-backend",
   "version": "1.0.0",
-  "description": "LinkMind Admin - Backend Express API",
+  "description": "Sawaara Admin - Backend Express API",
   "main": "dist/index.js",
   "scripts": {
     "dev": "cross-env NODE_ENV=development nodemon --exec ts-node src/index.ts",
     "build": "tsc",
     "start": "cross-env NODE_ENV=production node dist/index.js",
     "lint": "eslint src --ext .ts",
-    "seed": "npx ts-node src/seed.ts"
+    "seed": "npx ts-node src/seed.ts",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

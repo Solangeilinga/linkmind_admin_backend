@@ -56,7 +56,7 @@ if (process.env.NODE_ENV !== "test") app.use(morgan("dev"));
 
 // ── Health ───────────────────────────────────────────────────
 app.get("/health", (_req, res) => {
-  res.json({ status: "OK", service: "LinkMind Admin API", env: process.env.NODE_ENV });
+  res.json({ status: "OK", service: "Sawaara Admin API", env: process.env.NODE_ENV });
 });
 
 // ── Routes ───────────────────────────────────────────────────
@@ -69,7 +69,21 @@ app.use("/api/challenges",    challengesRoutes);
 app.use("/api/professionals", professionalsRoutes);
 app.use("/api/ads",           adsRoutes);
 app.use("/api/config",        configRoutes);
-app.use("/api/seed",          seedRoutes);
+// ── Route /api/seed : désactivée en production ───────────────
+// Cette route insère des données de référence (badges, types, etc.).
+// Elle est réservée à l'environnement de développement/staging uniquement.
+// En production, utiliser `npm run seed` (script CLI) depuis le serveur.
+if (process.env.NODE_ENV !== "production") {
+  app.use("/api/seed", seedRoutes);
+  logger.info("⚠️  [SEED] Route /api/seed activée (env: " + process.env.NODE_ENV + ")");
+} else {
+  app.use("/api/seed", (_req: import("express").Request, res: import("express").Response) => {
+    res.status(403).json({
+      error:   "Route désactivée en production",
+      message: "Utilisez `npm run seed` depuis le serveur pour initialiser les données.",
+    });
+  });
+}
 
 // ── 404 ──────────────────────────────────────────────────────
 app.use((_req, res) => res.status(404).json({ error: "Route not found" }));
@@ -80,12 +94,12 @@ app.use(errorHandler);
 // ── Start ────────────────────────────────────────────────────
 const startServer = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/LinkMind");
+    await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/Sawaara");
     logger.info("✅ MongoDB connected");
 
     app.listen(PORT, () => {
       console.log("\n" + "=".repeat(50));
-      console.log("🛡️  LinkMind Admin API");
+      console.log("🛡️  Sawaara Admin API");
       console.log("=".repeat(50));
       console.log(`📍 URL    : http://localhost:${PORT}`);
       console.log(`❤️  Health : http://localhost:${PORT}/health`);
