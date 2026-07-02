@@ -33,6 +33,10 @@ export interface IUser extends Document {
   city?:           string;
   gender?:         UserGender | null;
 
+  // Champs sensibles (select: false — jamais retournés par défaut)
+  password?:      string;
+  refreshToken?:  string;
+
   // Rôles & statut
   isAdmin:        boolean;
   adminRole?:     AdminRole;
@@ -119,7 +123,9 @@ const UserSchema = new Schema<IUser>(
     firstName:      { type: String },
     lastName:       { type: String },
     email:          { type: String },
-    // password exclu volontairement
+    // password : select:false — jamais retourné par défaut.
+    // Les routes admin qui en ont besoin utilisent .select('+password')
+    password:       { type: String, select: false },
     avatar:         { type: String },
     anonymousAlias: { type: String },
     phone:          { type: String },
