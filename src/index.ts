@@ -56,7 +56,7 @@ if (process.env.NODE_ENV !== "test") app.use(morgan("dev"));
 
 // ── Health ───────────────────────────────────────────────────
 app.get("/health", (_req, res) => {
-  res.json({ status: "OK", service: "BasYam Admin API", env: process.env.NODE_ENV });
+  res.json({ status: "OK", service: "BASYAM Admin API", env: process.env.NODE_ENV });
 });
 
 // ── Routes ───────────────────────────────────────────────────
@@ -94,12 +94,12 @@ app.use(errorHandler);
 // ── Start ────────────────────────────────────────────────────
 const startServer = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/BasYam");
+    await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/BASYAM");
     logger.info("✅ MongoDB connected");
 
     app.listen(PORT, () => {
       console.log("\n" + "=".repeat(50));
-      console.log("🛡️  BasYam Admin API");
+      console.log("🛡️  BASYAM Admin API");
       console.log("=".repeat(50));
       console.log(`📍 URL    : http://localhost:${PORT}`);
       console.log(`❤️  Health : http://localhost:${PORT}/health`);
