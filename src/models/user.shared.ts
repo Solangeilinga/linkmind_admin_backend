@@ -1,7 +1,7 @@
 /**
  * Types partagés du modèle User entre le backend principal (JS) et le backend admin (TS).
  *
- * RÈGLE : toute modification du schéma User dans LinkMind_Backend/src/models/user.model.js
+ * RÈGLE : toute modification du schéma User dans BasYam_Backend/src/models/user.model.js
  * doit être répercutée ici. Ce fichier est la source de vérité côté admin.
  *
  * Les champs sensibles (password, refreshToken, otp*, publicKey, privateKey)

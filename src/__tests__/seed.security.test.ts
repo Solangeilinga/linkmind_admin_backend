@@ -13,7 +13,7 @@ const JWT_SECRET = process.env.JWT_SECRET!;
 
 function superAdminToken() {
   return jwt.sign(
-    { id: "sa1", email: "sa@sawaara.app", isAdmin: true, adminRole: "super_admin" },
+    { id: "sa1", email: "sa@basyam.app", isAdmin: true, adminRole: "super_admin" },
     JWT_SECRET,
     { expiresIn: "1h" }
   );

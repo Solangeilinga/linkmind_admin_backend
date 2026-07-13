@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: linkmind-admin-backend
+    name: basyam-admin-backend
     runtime: node
     buildCommand: npm install --include=dev && npm run build
     startCommand: npm start

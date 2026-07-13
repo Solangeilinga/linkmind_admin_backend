@@ -12,12 +12,12 @@ dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 import { User, AppConfig } from "./models";
 
 async function seed() {
-  const uri = process.env.MONGODB_URI || "mongodb://localhost:27017/LinkMind";
+  const uri = process.env.MONGODB_URI || "mongodb://localhost:27017/BasYam";
   await mongoose.connect(uri);
   console.log("✅ MongoDB connecté");
 
   // ── Super Admin ─────────────────────────────────────────
-  const email    = process.env.SEED_ADMIN_EMAIL    || "admin@linkmind.app";
+  const email    = process.env.SEED_ADMIN_EMAIL    || "admin@basyam.app";
   const password = process.env.SEED_ADMIN_PASSWORD || "Admin1234!";
   const name     = process.env.SEED_ADMIN_NAME     || "Super Admin";
 
@@ -41,7 +41,7 @@ async function seed() {
 
   // ── AppConfig par défaut ─────────────────────────────────
   const defaultConfigs = [
-    { key: "commissionRate",        value: 0.05, description: "Taux de commission LinkMind (0.05 = 5%)", isPublic: false },
+    { key: "commissionRate",        value: 0.05, description: "Taux de commission BasYam (0.05 = 5%)", isPublic: false },
     { key: "currency",              value: "FCFA", description: "Devise par défaut",                      isPublic: true  },
     { key: "maxBookingsPerDay",     value: 50,   description: "Nombre max de réservations par jour",      isPublic: false },
     { key: "maintenanceMode",       value: false, description: "Mode maintenance (désactive l'app)",       isPublic: true  },

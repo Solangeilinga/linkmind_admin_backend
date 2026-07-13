@@ -89,7 +89,7 @@ describe("protect middleware", () => {
   });
 
   it("accepte un token admin valide et peuple req.admin", () => {
-    const token = makeToken({ id: "abc123", email: "admin@sawaara.app", isAdmin: true, adminRole: "admin" });
+    const token = makeToken({ id: "abc123", email: "admin@basyam.app", isAdmin: true, adminRole: "admin" });
     const req = { headers: { authorization: `Bearer ${token}` } } as AdminRequest;
     const res = mockRes();
     const next = mockNext();
@@ -97,7 +97,7 @@ describe("protect middleware", () => {
     protect(req, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
-    expect(req.admin).toMatchObject({ id: "abc123", email: "admin@sawaara.app", role: "admin" });
+    expect(req.admin).toMatchObject({ id: "abc123", email: "admin@basyam.app", role: "admin" });
   });
 });
 
