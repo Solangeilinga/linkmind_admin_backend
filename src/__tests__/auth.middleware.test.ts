@@ -30,12 +30,25 @@ function mockNext(): NextFunction {
   return jest.fn();
 }
 
+// ─── Helper to create mock AdminRequest ────────────────────────────────────
+
+function createMockRequest(headers: Record<string, string> = {}): AdminRequest {
+  return {
+    headers,
+    body: {},
+    params: {},
+    query: {},
+    get: (name: string) => headers[name.toLowerCase()],
+    // Add other Express Request properties as needed
+  } as unknown as AdminRequest;
+}
+
 // ─── protect() ───────────────────────────────────────────────────────────────
 
 describe("protect middleware", () => {
 
   it("rejette si aucun header Authorization", () => {
-    const req = { headers: {} } as AdminRequest;
+    const req = createMockRequest(); // Empty headers
     const res = mockRes();
     const next = mockNext();
 
@@ -48,7 +61,7 @@ describe("protect middleware", () => {
 
   it("rejette un token signé avec un mauvais secret", () => {
     const token = makeToken({ id: "abc", email: "a@b.com", isAdmin: true, adminRole: "admin" }, "wrong-secret");
-    const req = { headers: { authorization: `Bearer ${token}` } } as AdminRequest;
+    const req = createMockRequest({ authorization: `Bearer ${token}` });
     const res = mockRes();
     const next = mockNext();
 
@@ -64,7 +77,7 @@ describe("protect middleware", () => {
       JWT_SECRET,
       { expiresIn: -1 }   // déjà expiré
     );
-    const req = { headers: { authorization: `Bearer ${token}` } } as AdminRequest;
+    const req = createMockRequest({ authorization: `Bearer ${token}` });
     const res = mockRes();
     const next = mockNext();
 
@@ -79,7 +92,7 @@ describe("protect middleware", () => {
 
   it("rejette un token valide mais sans isAdmin", () => {
     const token = makeToken({ id: "abc", email: "user@b.com", isAdmin: false });
-    const req = { headers: { authorization: `Bearer ${token}` } } as AdminRequest;
+    const req = createMockRequest({ authorization: `Bearer ${token}` });
     const res = mockRes();
     const next = mockNext();
 
@@ -90,7 +103,7 @@ describe("protect middleware", () => {
 
   it("accepte un token admin valide et peuple req.admin", () => {
     const token = makeToken({ id: "abc123", email: "admin@basyam.app", isAdmin: true, adminRole: "admin" });
-    const req = { headers: { authorization: `Bearer ${token}` } } as AdminRequest;
+    const req = createMockRequest({ authorization: `Bearer ${token}` });
     const res = mockRes();
     const next = mockNext();
 
@@ -106,7 +119,14 @@ describe("protect middleware", () => {
 describe("requireRole middleware", () => {
 
   function makeAdminReq(role: string): AdminRequest {
-    return { admin: { id: "x", email: "x@x.com", role } } as AdminRequest;
+    return {
+      admin: { id: "x", email: "x@x.com", role },
+      headers: {},
+      body: {},
+      params: {},
+      query: {},
+      get: jest.fn(),
+    } as unknown as AdminRequest;
   }
 
   it("bloque un analyst qui tente une route admin", () => {
@@ -142,7 +162,13 @@ describe("requireRole middleware", () => {
   });
 
   it("rejette si req.admin n'est pas défini", () => {
-    const req = {} as AdminRequest;
+    const req = {
+      headers: {},
+      body: {},
+      params: {},
+      query: {},
+      get: jest.fn(),
+    } as unknown as AdminRequest;
     const res = mockRes();
     const next = mockNext();
 

@@ -74,8 +74,13 @@ describe("user.shared — enum adminRole", () => {
   });
 
   it("le champ adminRole n'accepte pas de valeur hors liste", () => {
-    // Validation Mongoose synchrone
-    const userDoc = new User({ adminRole: "god_mode" } as Partial<IUser>);
+    // ✅ FIX: Créer un objet avec le bon typage en utilisant 'as any'
+    const userData = { 
+      email: "test@example.com", // Ajout d'un email requis
+      adminRole: "god_mode" 
+    } as any as Partial<IUser>;
+    
+    const userDoc = new User(userData);
     const error = userDoc.validateSync();
     expect(error?.errors["adminRole"]).toBeDefined();
   });
