@@ -1,7 +1,9 @@
 import { Router, Response } from "express";
 import { body, param, query, validationResult } from "express-validator";
+import crypto from "crypto";
 import { protect, requireRole, AdminRequest } from "../middleware/auth.middleware";
 import { Professional } from "../models";
+import { sendEmail } from "../services/email.service";
 import logger from "../utils/logger";
 
 const router = Router();
@@ -208,6 +210,47 @@ router.delete("/:id", requireRole("super_admin"), param("id").isMongoId(),
       logger.warn(`Professional deleted: ${req.params.id} by ${req.admin?.email}`);
       res.json({ success: true });
     } catch { res.status(500).json({ error: "Erreur serveur" }); }
+  }
+);
+
+// POST /api/professionals/:id/send-invite
+// Envoie (ou renvoie) le lien de configuration du mot de passe de l'espace
+// professionnel — ce lien pointe vers le backend PRINCIPAL (le pro se
+// connecte et gère ses rendez-vous là-bas, jamais via ce dashboard admin),
+// mais l'action de déclenchement se fait bien depuis ici.
+router.post("/:id/send-invite", requireRole("admin"), param("id").isMongoId(),
+  async (req: AdminRequest, res: Response) => {
+    try {
+      const pro = await Professional.findById(req.params.id);
+      if (!pro) return res.status(404).json({ error: "Professionnel introuvable" });
+      if (!pro.email) return res.status(400).json({ error: "Ce professionnel n'a pas d'adresse email renseignée" });
+
+      const setupToken = crypto.randomBytes(32).toString("hex");
+      pro.passwordSetupToken = setupToken;
+      pro.passwordSetupExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 jours
+      await pro.save();
+
+      const mainAppUrl = process.env.MAIN_FRONTEND_URL || "https://basyam.netlify.app";
+      const setupUrl = `${mainAppUrl}/pro/setup-password?token=${setupToken}`;
+
+      await sendEmail({
+        to: pro.email,
+        subject: "Bienvenue sur l'espace professionnel BASYAM",
+        html: `
+          <h2>Bonjour ${pro.firstName || ""},</h2>
+          <p>Vous avez été ajouté(e) comme professionnel partenaire sur BASYAM.</p>
+          <p>Pour accéder à votre espace (rendez-vous, créneaux disponibles), définissez votre mot de passe :</p>
+          <p><a href="${setupUrl}">Configurer mon mot de passe</a></p>
+          <p style="color:#888;font-size:13px;">Ce lien expire dans 7 jours.</p>
+        `,
+      });
+
+      logger.info(`Invite sent: ${pro.email} by ${req.admin?.email}`);
+      res.json({ success: true, message: "Invitation envoyée." });
+    } catch (err) {
+      logger.error("Send invite error: " + err);
+      res.status(500).json({ error: "Erreur serveur" });
+    }
   }
 );
 

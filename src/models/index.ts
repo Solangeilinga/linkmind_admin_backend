@@ -83,6 +83,14 @@ export interface IProfessional extends Document {
     status?:     "pending" | "reviewed" | "dismissed";
     reportedAt?: Date;
   }>;
+  // Authentification de l'espace professionnel (voir LinkMind_Backend —
+  // même schéma, collection partagée). Le dashboard admin ne fait
+  // qu'initier l'invitation ; le pro se connecte ensuite via le backend
+  // principal, jamais via ce service admin.
+  password?:             string;
+  passwordSetupToken?:   string;
+  passwordSetupExpires?: Date | null;
+  lastLoginAt?:          Date | null;
 }
 
 const ProfessionalSchema = new Schema<IProfessional>(
@@ -121,6 +129,10 @@ const ProfessionalSchema = new Schema<IProfessional>(
         reportedAt: { type: Date },
       },
     ],
+    password:             { type: String, select: false },
+    passwordSetupToken:   { type: String, select: false, default: null },
+    passwordSetupExpires: { type: Date,   select: false, default: null },
+    lastLoginAt:          { type: Date, default: null },
   },
   { collection: "professionals", timestamps: true }
 );

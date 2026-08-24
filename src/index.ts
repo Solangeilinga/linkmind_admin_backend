@@ -1,111 +1,450 @@
-import express from "express";
-import cors from "cors";
-import helmet from "helmet";
-import morgan from "morgan";
-import mongoose from "mongoose";
-import * as dotenv from "dotenv";
-import path from "path";
+import mongoose, { Schema, Document } from "mongoose";
 
-dotenv.config({ path: path.resolve(process.cwd(), ".env") });
+// ─── User ────────────────────────────────────────────────────
+// Le modèle User est défini dans user.shared.ts (source de vérité admin).
+// Toute modification du schéma User doit être faite dans ce fichier.
+export { User, IUser, AdminRole, UserLevel, AccountStatus } from "./user.shared";
 
-import authRoutes          from "./routes/auth.routes";
-import usersRoutes         from "./routes/users.routes";
-import reportsRoutes       from "./routes/reports.routes";
-import contentRoutes       from "./routes/content.routes";
-import bookingsRoutes      from "./routes/bookings.routes";
-import challengesRoutes    from "./routes/challenges.routes";
-import professionalsRoutes from "./routes/professionals.routes";
-import adsRoutes           from "./routes/ads.routes";
-import configRoutes        from "./routes/config.routes";
-import seedRoutes          from "./routes/seed.routes";
-import { errorHandler } from "./middleware/error.middleware";
-import logger from "./utils/logger";
+// ─── Professional ────────────────────────────────────────────
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// ── Security ─────────────────────────────────────────────────
-app.use(helmet());
-app.set("trust proxy", 1);
-
-// ── CORS ─────────────────────────────────────────────────────
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3001";
-
-app.use(
-  cors({
-    origin: (origin, cb) => {
-      // Permettre les requêtes sans origine (Postman, curl, etc.)
-      if (!origin) return cb(null, true);
-      
-      // Autoriser uniquement l'URL du frontend configurée
-      if (origin === FRONTEND_URL || origin === FRONTEND_URL.replace(/\/$/, "")) {
-        return cb(null, true);
-      }
-      
-      console.log(`❌ CORS blocked: ${origin} (expected: ${FRONTEND_URL})`);
-      cb(new Error(`CORS: origin ${origin} not allowed`));
-    },
-    credentials: true,
-  })
+// Sous-schéma créneau (identique au backend principal)
+const SlotSchema = new Schema(
+  {
+    _id:       { type: String, required: true }, // "YYYY-MM-DD_HH:MM"
+    date:      { type: String, required: true },
+    startTime: { type: String, required: true },
+    endTime:   { type: String, required: true },
+    isBooked:  { type: Boolean, default: false },
+    bookingId: { type: Schema.Types.ObjectId, ref: "Booking", default: null },
+  }
+  // Note: { _id: false } retiré — il empêchait la sauvegarde du _id String personnalisé
 );
 
-// ── Body ─────────────────────────────────────────────────────
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true }));
-if (process.env.NODE_ENV !== "test") app.use(morgan("dev"));
+// Sous-schéma disponibilités récurrentes
+const WeeklyAvailabilitySchema = new Schema(
+  {
+    dayOfWeek:    { type: Number, min: 0, max: 6, required: true },
+    startTime:    { type: String, required: true },
+    endTime:      { type: String, required: true },
+    slotDuration: { type: Number, default: 60 },
+  },
+  { _id: false }
+);
 
-// ── Health ───────────────────────────────────────────────────
-app.get("/health", (_req, res) => {
-  res.json({ status: "OK", service: "BASYAM Admin API", env: process.env.NODE_ENV });
-});
+export interface ISlot {
+  _id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  isBooked: boolean;
+  bookingId?: mongoose.Types.ObjectId | null;
+}
 
-// ── Routes ───────────────────────────────────────────────────
-app.use("/api/auth",          authRoutes);
-app.use("/api/users",         usersRoutes);
-app.use("/api/reports",       reportsRoutes);
-app.use("/api/content",       contentRoutes);
-app.use("/api/bookings",      bookingsRoutes);
-app.use("/api/challenges",    challengesRoutes);
-app.use("/api/professionals", professionalsRoutes);
-app.use("/api/ads",           adsRoutes);
-app.use("/api/config",        configRoutes);
-// Route de gestion du contenu de référence (badges, types, humeurs, etc.).
-// Déjà protégée par `protect, requireRole("admin")` dans seed.routes.ts —
-// la même protection que toutes les autres routes admin de ce service, qui
-// restent actives en production. La désactiver en plus ici la rendait
-// totalement inutilisable une fois déployée : toute la page "Base de
-// données" du dashboard échouait sur chaque action (403), y compris les
-// opérations d'ajout/édition individuelles qui n'ont rien à voir avec le
-// seed groupé initial (lui-même sans risque : il n'insère que dans une
-// collection vide, jamais de doublon ni d'écrasement).
-app.use("/api/seed", seedRoutes);
+export interface IWeeklyAvailability {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  slotDuration: number;
+}
 
-// ── 404 ──────────────────────────────────────────────────────
-app.use((_req, res) => res.status(404).json({ error: "Route not found" }));
+export interface IProfessional extends Document {
+  firstName?: string;
+  lastName?: string;
+  photo?: string;
+  bio?: string;
+  type?: string;
+  specialties?: string[];
+  city?: string;
+  country?: string;
+  phone?: string;
+  email?: string;
+  whatsapp?: string;
+  sessionPrice?: number;
+  sessionDuration?: number;
+  currency?: string;
+  isOnline?: boolean;
+  isInPerson?: boolean;
+  // Agenda
+  availableSlots?: ISlot[];
+  weeklyAvailability?: IWeeklyAvailability[];
+  // Visio
+  personalMeetingLink?: string | null;
+  meetingProvider?: "jitsi" | "whereby" | "zoom" | "meet" | null;
+  // Statut
+  isActive?: boolean;
+  isVerified?: boolean;
+  totalBookings?: number;
+  rating?: number;
+  reportCount?: number;
+  reports?: Array<{
+    user?:       mongoose.Types.ObjectId;
+    reason?:     string;
+    details?:    string;
+    status?:     "pending" | "reviewed" | "dismissed";
+    reportedAt?: Date;
+  }>;
+  // Authentification de l'espace professionnel (voir LinkMind_Backend —
+  // même schéma, collection partagée). Le dashboard admin ne fait
+  // qu'initier l'invitation ; le pro se connecte ensuite via le backend
+  // principal, jamais via ce service admin.
+  password?:             string;
+  passwordSetupToken?:   string;
+  passwordSetupExpires?: Date | null;
+  lastLoginAt?:          Date | null;
+}
 
-// ── Error ────────────────────────────────────────────────────
-app.use(errorHandler);
+const ProfessionalSchema = new Schema<IProfessional>(
+  {
+    firstName:       { type: String },
+    lastName:        { type: String },
+    photo:           { type: String },
+    bio:             { type: String },
+    type:            { type: String },
+    specialties:     [{ type: String }],
+    city:            { type: String },
+    country:         { type: String, default: "Burkina Faso" },
+    phone:           { type: String },
+    email:           { type: String },
+    whatsapp:        { type: String },
+    sessionPrice:    { type: Number },
+    sessionDuration: { type: Number, default: 60 },
+    currency:        { type: String, default: "FCFA" },
+    isOnline:        { type: Boolean, default: false },
+    isInPerson:      { type: Boolean, default: true },
+    availableSlots:      [SlotSchema],
+    weeklyAvailability:  [WeeklyAvailabilitySchema],
+    personalMeetingLink: { type: String, default: null },
+    meetingProvider:     { type: String, enum: ["jitsi", "whereby", "zoom", "meet", null], default: null },
+    isActive:      { type: Boolean },
+    isVerified:    { type: Boolean },
+    totalBookings: { type: Number, default: 0 },
+    rating:        { type: Number },
+    reportCount:   { type: Number, default: 0 },
+    reports: [
+      {
+        user:       { type: Schema.Types.ObjectId, ref: "User" },
+        reason:     { type: String },
+        details:    { type: String },
+        status:     { type: String, enum: ["pending", "reviewed", "dismissed"], default: "pending" },
+        reportedAt: { type: Date },
+      },
+    ],
+    password:             { type: String, select: false },
+    passwordSetupToken:   { type: String, select: false, default: null },
+    passwordSetupExpires: { type: Date,   select: false, default: null },
+    lastLoginAt:          { type: Date, default: null },
+  },
+  { collection: "professionals", timestamps: true }
+);
 
-// ── Start ────────────────────────────────────────────────────
-const startServer = async () => {
-  try {
-    await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/BASYAM");
-    logger.info("✅ MongoDB connected");
+export const Professional = mongoose.models.Professional
+  ? (mongoose.model("Professional") as mongoose.Model<IProfessional>)
+  : mongoose.model<IProfessional>("Professional", ProfessionalSchema);
 
-    app.listen(PORT, () => {
-      console.log("\n" + "=".repeat(50));
-      console.log("🛡️  BASYAM Admin API");
-      console.log("=".repeat(50));
-      console.log(`📍 URL    : http://localhost:${PORT}`);
-      console.log(`❤️  Health : http://localhost:${PORT}/health`);
-      console.log(`🌍 Env    : ${process.env.NODE_ENV}`);
-      console.log("=".repeat(50) + "\n");
-    });
-  } catch (err) {
-    logger.error("❌ Failed to start: " + err);
-    process.exit(1);
-  }
-};
+// ─── Booking ─────────────────────────────────────────────────
+export interface IBooking extends Document {
+  user:             mongoose.Types.ObjectId;
+  professional:     mongoose.Types.ObjectId;
+  consultationType: "in_person" | "online";
 
-startServer();
-export default app;
+  // Planification (champs du backend principal)
+  scheduledAt?:    Date | null;
+  slotId?:         string | null;
+  durationMin?:    number;
+  preferredDate?:  string | null;
+
+  // Visioconférence
+  meetingLink?:     string | null;
+  meetingProvider?: "jitsi" | "whereby" | "zoom" | "meet" | null;
+  meetingRoomId?:   string | null;
+
+  // Message (stocké chiffré côté backend principal — lu déchiffré via populate)
+  message?:         string;
+  isAnonymous?:     boolean;
+
+  // Statut — inclut "no_show" présent dans le backend principal
+  status: "pending" | "confirmed" | "cancelled" | "completed" | "no_show";
+
+  // Finance
+  sessionPrice?:    number;
+  commissionRate:   number;
+  commissionAmount?: number;
+
+  // Admin
+  adminNote?:       string;
+  adminLog?: Array<{
+    event?:       string;
+    proName?:     string;
+    type?:        string;
+    scheduledAt?: Date;
+    confirmedAt?: Date;
+    completedAt?: Date;
+    meetingLink?: string;
+    createdAt?:   Date;
+  }>;
+
+  confirmedAt?: Date;
+  cancelledAt?: Date;
+  completedAt?: Date;
+  createdAt?:   Date;
+}
+
+const BookingSchema = new Schema<IBooking>(
+  {
+    user:             { type: Schema.Types.ObjectId, ref: "User",         required: true },
+    professional:     { type: Schema.Types.ObjectId, ref: "Professional", required: true },
+    consultationType: { type: String, enum: ["in_person", "online"], default: "in_person" },
+
+    scheduledAt:   { type: Date,   default: null },
+    slotId:        { type: String, default: null },
+    durationMin:   { type: Number, default: 60 },
+    preferredDate: { type: String, default: null },
+
+    meetingLink:     { type: String, default: null },
+    meetingProvider: { type: String, enum: ["jitsi", "whereby", "zoom", "meet", null], default: null },
+    meetingRoomId:   { type: String, default: null },
+
+    // Le message est stocké chiffré dans "_encryptedMessage" par le backend principal.
+    // L'admin le lit via le virtual "message" exposé par le populate.
+    isAnonymous: { type: Boolean, default: true },
+
+    status: {
+      type: String,
+      enum: ["pending", "confirmed", "cancelled", "completed", "no_show"],
+      default: "pending",
+    },
+
+    sessionPrice:     { type: Number },
+    commissionRate:   { type: Number, default: 0.1 },
+    commissionAmount: { type: Number },
+
+    adminNote: { type: String },
+    adminLog: [{
+      event:       { type: String },
+      proName:     { type: String },
+      type:        { type: String },
+      scheduledAt: { type: Date },
+      confirmedAt: { type: Date },
+      completedAt: { type: Date },
+      meetingLink: { type: String },
+      createdAt:   { type: Date, default: Date.now },
+    }],
+
+    confirmedAt: { type: Date },
+    cancelledAt: { type: Date },
+    completedAt: { type: Date },
+  },
+  { collection: "bookings", timestamps: true }
+);
+
+export const Booking = mongoose.models.Booking
+  ? (mongoose.model("Booking") as mongoose.Model<IBooking>)
+  : mongoose.model<IBooking>("Booking", BookingSchema);
+
+// ─── Post ────────────────────────────────────────────────────
+export interface IPost extends Document {
+  author?:           mongoose.Types.ObjectId;
+  professionalAuthor?: mongoose.Types.ObjectId;
+  content?:          string;
+  postType?:         string;
+  isAnonymous?:      boolean;
+  isVisible:         boolean;
+  deletedAt?:        Date | null;
+  reportCount:       number;
+  reports?: Array<{
+    user?:       mongoose.Types.ObjectId;
+    reason?:     string;
+    details?:    string;
+    status:      "pending" | "reviewed" | "dismissed";
+    reportedAt?: Date;
+  }>;
+  likesCount?:        number;
+  sameFeelingsCount?: number;
+  commentsCount?:     number;
+  createdAt?:         Date;
+}
+
+const PostSchema = new Schema<IPost>(
+  {
+    author:      { type: Schema.Types.ObjectId, ref: "User" },
+    professionalAuthor: { type: Schema.Types.ObjectId, ref: "Professional", default: null },
+    content:     { type: String },
+    postType:    { type: String },
+    isAnonymous: { type: Boolean },
+    isVisible:   { type: Boolean, default: true },
+    deletedAt:   { type: Date, default: null },
+    reportCount: { type: Number, default: 0 },
+    reports: [
+      {
+        user:       { type: Schema.Types.ObjectId, ref: "User" },
+        reason:     { type: String },
+        details:    { type: String },
+        status:     { type: String, enum: ["pending", "reviewed", "dismissed"], default: "pending" },
+        reportedAt: { type: Date },
+      },
+    ],
+    likesCount:        { type: Number, default: 0 },
+    sameFeelingsCount: { type: Number, default: 0 },
+    commentsCount:     { type: Number, default: 0 },
+  },
+  { collection: "posts", timestamps: true }
+);
+
+export const Post = mongoose.models.Post
+  ? (mongoose.model("Post") as mongoose.Model<IPost>)
+  : mongoose.model<IPost>("Post", PostSchema);
+
+// ─── Comment (modération) ───────────────────────────────────────────────
+export interface IComment extends Document {
+  post?:               mongoose.Types.ObjectId;
+  author?:             mongoose.Types.ObjectId;
+  professionalAuthor?: mongoose.Types.ObjectId;
+  content?:            string;
+  isAnonymous?:        boolean;
+  isVisible:           boolean;
+  reportCount?:        number;
+  reports?: Array<{
+    user?:       mongoose.Types.ObjectId;
+    reason?:     string;
+    details?:    string;
+    status?:     "pending" | "reviewed" | "dismissed";
+    reportedAt?: Date;
+  }>;
+  createdAt?: Date;
+}
+
+const CommentSchema = new Schema<IComment>(
+  {
+    post:               { type: Schema.Types.ObjectId, ref: "Post" },
+    author:              { type: Schema.Types.ObjectId, ref: "User" },
+    professionalAuthor:  { type: Schema.Types.ObjectId, ref: "Professional", default: null },
+    content:             { type: String },
+    isAnonymous:         { type: Boolean },
+    isVisible:           { type: Boolean, default: true },
+    reportCount:         { type: Number, default: 0 },
+    reports: [
+      {
+        user:       { type: Schema.Types.ObjectId, ref: "User" },
+        reason:     { type: String },
+        details:    { type: String },
+        status:     { type: String, enum: ["pending", "reviewed", "dismissed"], default: "pending" },
+        reportedAt: { type: Date },
+      },
+    ],
+  },
+  { collection: "comments", timestamps: true }
+);
+
+export const Comment = mongoose.models.Comment
+  ? (mongoose.model("Comment") as mongoose.Model<IComment>)
+  : mongoose.model<IComment>("Comment", CommentSchema);
+
+// ─── Challenge ───────────────────────────────────────────────
+export interface IChallenge extends Document {
+  title: string;
+  description: string;
+  instructions?: string[];
+  category: string;
+  difficulty: string;
+  durationMinutes: number;
+  points: number;
+  icon: string;
+  completionType?: any;
+  isPremium: boolean;
+  isActive: boolean;
+  targetLevel?: string;
+  order?: number;
+}
+
+const ChallengeSchema = new Schema<IChallenge>(
+  {
+    title:           { type: String, required: true },
+    description:     { type: String, required: true },
+    instructions:    [{ type: String }],
+    category:        { type: String, required: true },
+    difficulty:      { type: String, default: "easy" },
+    durationMinutes: { type: Number, required: true },
+    points:          { type: Number, required: true },
+    icon:            { type: String, required: true },
+    completionType:  { type: Schema.Types.Mixed },
+    isPremium:       { type: Boolean, default: false },
+    isActive:        { type: Boolean, default: true },
+    targetLevel:     { type: String },
+    order:           { type: Number, default: 0 },
+  },
+  { collection: "challenges", timestamps: true }
+);
+
+export const Challenge = mongoose.models.Challenge
+  ? (mongoose.model("Challenge") as mongoose.Model<IChallenge>)
+  : mongoose.model<IChallenge>("Challenge", ChallengeSchema);
+
+// ─── Ad ──────────────────────────────────────────────────────
+export interface IAd extends Document {
+  title: string;
+  description?: string;
+  imageUrl?: string;
+  emoji?: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
+  category: string;
+  placement: string[];
+  advertiser?: string;
+  impressions: number;
+  clicks: number;
+  isActive: boolean;
+  startsAt?: Date;
+  endsAt?: Date;
+  targetAgeMin?: number;
+  targetAgeMax?: number;
+  targetCity?: string;
+}
+
+const AdSchema = new Schema<IAd>(
+  {
+    title:        { type: String, required: true, maxlength: 60 },
+    description:  { type: String, maxlength: 120 },
+    imageUrl:     { type: String },
+    emoji:        { type: String, default: "🌿" },
+    ctaLabel:     { type: String, default: "En savoir plus", maxlength: 30 },
+    ctaUrl:       { type: String },
+    category:     { type: String, enum: ["prevention", "wellness", "local_product", "event", "service"], default: "wellness" },
+    placement:    [{ type: String, enum: ["community_feed", "mood_screen", "challenges_screen"] }],
+    advertiser:   { type: String },
+    impressions:  { type: Number, default: 0 },
+    clicks:       { type: Number, default: 0 },
+    isActive:     { type: Boolean, default: true },
+    startsAt:     { type: Date },
+    endsAt:       { type: Date },
+    targetAgeMin: { type: Number },
+    targetAgeMax: { type: Number },
+    targetCity:   { type: String },
+  },
+  { collection: "ads", timestamps: true }
+);
+
+export const Ad = mongoose.models.Ad
+  ? (mongoose.model("Ad") as mongoose.Model<IAd>)
+  : mongoose.model<IAd>(   "Ad", AdSchema);
+
+// ─── AppConfig ───────────────────────────────────────────────
+export interface IAppConfig extends Document {
+  key: string;
+  value: any;
+  description?: string;
+  isPublic?: boolean;
+}
+
+const AppConfigSchema = new Schema<IAppConfig>(
+  {
+    key:         { type: String, required: true, unique: true },
+    value:       { type: Schema.Types.Mixed, required: true },
+    description: { type: String },
+    isPublic:    { type: Boolean, default: false },
+  },
+  { collection: "appconfigs", timestamps: true }
+);
+
+export const AppConfig = mongoose.models.AppConfig
+  ? (mongoose.model("AppConfig") as mongoose.Model<IAppConfig>)
+  : mongoose.model<IAppConfig>("AppConfig", AppConfigSchema);
