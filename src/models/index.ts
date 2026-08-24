@@ -75,6 +75,14 @@ export interface IProfessional extends Document {
   isVerified?: boolean;
   totalBookings?: number;
   rating?: number;
+  reportCount?: number;
+  reports?: Array<{
+    user?:       mongoose.Types.ObjectId;
+    reason?:     string;
+    details?:    string;
+    status?:     "pending" | "reviewed" | "dismissed";
+    reportedAt?: Date;
+  }>;
 }
 
 const ProfessionalSchema = new Schema<IProfessional>(
@@ -103,6 +111,16 @@ const ProfessionalSchema = new Schema<IProfessional>(
     isVerified:    { type: Boolean },
     totalBookings: { type: Number, default: 0 },
     rating:        { type: Number },
+    reportCount:   { type: Number, default: 0 },
+    reports: [
+      {
+        user:       { type: Schema.Types.ObjectId, ref: "User" },
+        reason:     { type: String },
+        details:    { type: String },
+        status:     { type: String, enum: ["pending", "reviewed", "dismissed"], default: "pending" },
+        reportedAt: { type: Date },
+      },
+    ],
   },
   { collection: "professionals", timestamps: true }
 );
@@ -214,6 +232,7 @@ export const Booking = mongoose.models.Booking
 // ─── Post ────────────────────────────────────────────────────
 export interface IPost extends Document {
   author?:           mongoose.Types.ObjectId;
+  professionalAuthor?: mongoose.Types.ObjectId;
   content?:          string;
   postType?:         string;
   isAnonymous?:      boolean;
@@ -236,6 +255,7 @@ export interface IPost extends Document {
 const PostSchema = new Schema<IPost>(
   {
     author:      { type: Schema.Types.ObjectId, ref: "User" },
+    professionalAuthor: { type: Schema.Types.ObjectId, ref: "Professional", default: null },
     content:     { type: String },
     postType:    { type: String },
     isAnonymous: { type: Boolean },
@@ -261,6 +281,51 @@ const PostSchema = new Schema<IPost>(
 export const Post = mongoose.models.Post
   ? (mongoose.model("Post") as mongoose.Model<IPost>)
   : mongoose.model<IPost>("Post", PostSchema);
+
+// ─── Comment (modération) ───────────────────────────────────────────────
+export interface IComment extends Document {
+  post?:               mongoose.Types.ObjectId;
+  author?:             mongoose.Types.ObjectId;
+  professionalAuthor?: mongoose.Types.ObjectId;
+  content?:            string;
+  isAnonymous?:        boolean;
+  isVisible:           boolean;
+  reportCount?:        number;
+  reports?: Array<{
+    user?:       mongoose.Types.ObjectId;
+    reason?:     string;
+    details?:    string;
+    status?:     "pending" | "reviewed" | "dismissed";
+    reportedAt?: Date;
+  }>;
+  createdAt?: Date;
+}
+
+const CommentSchema = new Schema<IComment>(
+  {
+    post:               { type: Schema.Types.ObjectId, ref: "Post" },
+    author:              { type: Schema.Types.ObjectId, ref: "User" },
+    professionalAuthor:  { type: Schema.Types.ObjectId, ref: "Professional", default: null },
+    content:             { type: String },
+    isAnonymous:         { type: Boolean },
+    isVisible:           { type: Boolean, default: true },
+    reportCount:         { type: Number, default: 0 },
+    reports: [
+      {
+        user:       { type: Schema.Types.ObjectId, ref: "User" },
+        reason:     { type: String },
+        details:    { type: String },
+        status:     { type: String, enum: ["pending", "reviewed", "dismissed"], default: "pending" },
+        reportedAt: { type: Date },
+      },
+    ],
+  },
+  { collection: "comments", timestamps: true }
+);
+
+export const Comment = mongoose.models.Comment
+  ? (mongoose.model("Comment") as mongoose.Model<IComment>)
+  : mongoose.model<IComment>("Comment", CommentSchema);
 
 // ─── Challenge ───────────────────────────────────────────────
 export interface IChallenge extends Document {
