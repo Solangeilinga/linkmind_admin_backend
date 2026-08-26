@@ -42,7 +42,7 @@ function generateTokens(userId: string, email: string, adminRole: string) {
 router.post(
   "/login",
   loginLimiter,
-  [body("email").isEmail().normalizeEmail(), body("password").notEmpty()],
+  [body("email").isEmail().customSanitizer((v: string) => v.toLowerCase().trim()), body("password").notEmpty()],
   async (req: Request, res: Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });

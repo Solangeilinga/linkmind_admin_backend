@@ -152,7 +152,7 @@ router.post(
   "/",
   requireRole("admin"),
   [
-    body("email").isEmail().normalizeEmail().withMessage("Email valide requis"),
+    body("email").isEmail().customSanitizer((v: string) => v.toLowerCase().trim()).withMessage("Email valide requis"),
     body("password").isLength({ min: 6 }).withMessage("Mot de passe min 6 caractères"),
     body("anonymousAlias").optional().trim(),
     body("age").optional().isInt({ min: 13, max: 120 }),
