@@ -230,7 +230,7 @@ router.post("/:id/send-invite", requireRole("admin"), param("id").isMongoId(),
       pro.passwordSetupExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 jours
       await pro.save();
 
-      const mainAppUrl = process.env.MAIN_FRONTEND_URL || "https://basyam.netlify.app";
+      const mainAppUrl = process.env.MAIN_FRONTEND_URL || "https://basyam.vercel.app";
       const setupUrl = `${mainAppUrl}/pro/setup-password?token=${setupToken}`;
 
       await sendEmail({
