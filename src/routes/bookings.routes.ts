@@ -19,7 +19,8 @@ router.get("/", requireRole("analyst"), async (req: AdminRequest, res: Response)
 
     const [bookings, total] = await Promise.all([
       Booking.find(q)
-        .populate("user",         "name email")
+        // Testeur toujours anonymisé côté admin : pseudo + ville/âge, jamais l'email.
+        .populate("user",         "anonymousAlias city age")
         .populate("professional", "firstName lastName type city sessionPrice currency photo")
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
@@ -28,7 +29,14 @@ router.get("/", requireRole("analyst"), async (req: AdminRequest, res: Response)
       Booking.countDocuments(q),
     ]);
 
-    res.json({ data: bookings, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
+    const data = bookings.map((b: any) => ({
+      ...b,
+      user: b.user
+        ? { displayName: b.user.anonymousAlias || "Testeur anonyme", city: b.user.city, age: b.user.age }
+        : null,
+    }));
+
+    res.json({ data, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
   } catch (err) {
     logger.error("Bookings list error: " + err);
     res.status(500).json({ error: "Erreur serveur" });
@@ -67,11 +75,19 @@ router.get(
   param("id").isMongoId(),
   async (req: AdminRequest, res: Response) => {
     try {
-      const booking = await Booking.findById(req.params.id)
-        .populate("user",         "name email createdAt")
+      const booking: any = await Booking.findById(req.params.id)
+        .populate("user",         "anonymousAlias city age createdAt")
         .populate("professional", "firstName lastName type city phone email sessionPrice currency photo specialties")
         .lean();
       if (!booking) return res.status(404).json({ error: "Réservation introuvable" });
+      if (booking.user) {
+        booking.user = {
+          displayName: booking.user.anonymousAlias || "Testeur anonyme",
+          city: booking.user.city,
+          age: booking.user.age,
+          createdAt: booking.user.createdAt,
+        };
+      }
       res.json({ data: booking });
     } catch {
       res.status(500).json({ error: "Erreur serveur" });

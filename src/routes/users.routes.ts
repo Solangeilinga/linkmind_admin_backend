@@ -27,9 +27,11 @@ router.get(
 
       const q: any = { isAdmin: { $ne: true } };
       if (search) {
+        // Recherche sur le pseudo uniquement — l'email n'est plus exposé au
+        // panel admin (données testeurs anonymisées).
         q.$or = [
-          { name:  { $regex: search, $options: "i" } },
-          { email: { $regex: search, $options: "i" } },
+          { name:           { $regex: search, $options: "i" } },
+          { anonymousAlias: { $regex: search, $options: "i" } },
         ];
       }
       // Toujours exclure les comptes supprimés sauf si filtre explicite
@@ -51,7 +53,7 @@ router.get(
 
       const [users, total] = await Promise.all([
         User.find(q)
-          .select("-password -fcmToken")
+          .select("-password -fcmToken -email")
           .sort({ createdAt: -1 })
           .skip((page - 1) * limit)
           .limit(limit)
@@ -74,7 +76,7 @@ router.get(
   param("id").isMongoId(),
   async (req: AdminRequest, res: Response) => {
     try {
-      const user = await User.findById(req.params.id).select("-password -fcmToken").lean();
+      const user = await User.findById(req.params.id).select("-password -fcmToken -email").lean();
       if (!user) return res.status(404).json({ error: "Utilisateur introuvable" });
       res.json({ data: user });
     } catch {

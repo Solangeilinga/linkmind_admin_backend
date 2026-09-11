@@ -21,7 +21,7 @@ router.get("/", async (req: AdminRequest, res: Response) => {
 
     const [posts, total] = await Promise.all([
       Post.find(q)
-        .populate("author", "name email")
+        .populate("author", "name anonymousAlias")
         .populate("professionalAuthor", "firstName lastName email type")
         .sort({ reportCount: -1, createdAt: -1 })
         .skip((page - 1) * limit)
@@ -131,7 +131,7 @@ router.get("/comments", async (req: AdminRequest, res: Response) => {
 
     const [comments, total] = await Promise.all([
       Comment.find(q)
-        .populate("author", "name email")
+        .populate("author", "name anonymousAlias")
         .populate("professionalAuthor", "firstName lastName email type")
         .populate("post", "content")
         .sort({ reportCount: -1, createdAt: -1 })
