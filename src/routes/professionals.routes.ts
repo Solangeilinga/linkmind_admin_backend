@@ -230,7 +230,13 @@ router.post("/:id/send-invite", requireRole("admin"), param("id").isMongoId(),
       pro.passwordSetupExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 jours
       await pro.save();
 
-      const mainAppUrl = process.env.MAIN_FRONTEND_URL || "https://www.basyam.com";
+      // ⚠️ MAIN_FRONTEND_URL peut être configurée sur Render avec une liste
+      // d'origines séparées par des virgules (même convention que FRONTEND_URL
+      // côté CORS) — ne garder que la première évite un lien invalide du type
+      // "https://a.com,https://b.com/pro/setup-password" (rejeté par Gmail).
+      const mainAppUrl = (process.env.MAIN_FRONTEND_URL || "https://www.basyam.com")
+        .split(",")[0]
+        .trim();
       const setupUrl = `${mainAppUrl}/pro/setup-password?token=${setupToken}`;
 
       await sendEmail({
